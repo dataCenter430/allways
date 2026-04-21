@@ -39,6 +39,7 @@ class SwapTracker:
         # the voted value so the next extension round can vote again.
         self.extend_timeout_voted_at: Dict[int, int] = {}
         self.null_retry_count: Dict[int, int] = {}
+        self.last_poll_ok: bool = True
 
     def initialize(self):
         """Cold start: scan backward from latest swap to seed active set.
@@ -111,10 +112,13 @@ class SwapTracker:
         """Incremental refresh — called every forward step."""
         try:
             await self.poll_inner()
+            self.last_poll_ok = True
         except (ConnectionError, TimeoutError, asyncio.TimeoutError) as e:
             bt.logging.warning(f'SwapTracker poll transient error: {e}')
+            self.last_poll_ok = False
         except Exception as e:
             bt.logging.error(f'SwapTracker poll error: {e}')
+            self.last_poll_ok = False
             raise
 
     async def poll_inner(self):
